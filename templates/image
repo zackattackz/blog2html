@@ -1,0 +1,5 @@
+<div class="column">
+    <a class="img-link" href="{{ path }}">
+        <img src="{{ path }} alt="{{ alt }}" >
+    </a>
+</div>

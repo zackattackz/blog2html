@@ -1,0 +1,78 @@
+#!/bin/bash
+
+SPECIAL_CHARACTER="\`"
+TEMPLATES_PATH=~/.config/blog2html/templates
+PARAGRAPH_TEMPLATE_PATH=${TEMPLATES_PATH}/paragraph
+CAPTION_TEMPLATE_PATH=${TEMPLATES_PATH}/caption
+BLOGPOST_TEMPLATE_PATH=${TEMPLATES_PATH}/blogpost
+IMG_TEMPLATE_PATH=${TEMPLATES_PATH}/image
+
+function process_paragraph {
+    while read LINE; do
+        if [ "$LINE" == "\`" ]; then
+            exit
+        fi
+        echo $LINE
+    done
+}
+
+function image_to_data {
+    read img
+    IFS=',' read -ra SPLIT <<< "$img"
+    path=${SPLIT[0]}
+    alt=${SPLIT[1]}
+    echo "{\"path\":\"$path\",\"alt\":\"$alt\"}"
+}
+
+function images_to_data {
+    for IMG in $@; do
+        res=$(echo $IMG | image_to_data)
+        echo $res
+    done
+
+}
+
+function get_blog_post_content {
+    while read -n1 c; do
+        if [ "$c" == $SPECIAL_CHARACTER ]; then
+            read -n1 c
+            case "$c" in
+                "P")
+                    read
+                    content=$(process_paragraph)
+                    content=$(echo $content | sed 's/"/\\"/g')
+                    data="{\"content\":\"$content\"}"
+                    paragraph=$(echo $data | templatemake t no $PARAGRAPH_TEMPLATE_PATH - -)
+                    paragraph=$(echo $paragraph | sed 's/"/\\"/g')
+                    echo "$paragraph\n"
+                ;;
+                "C")
+                    read
+                    content=$(process_paragraph)
+                    content=$(echo $content | sed 's/"/\\"/g')
+                    data="{\"content\":\"$content\"}"
+                    paragraph=$(echo $data | templatemake t no $CAPTION_TEMPLATE_PATH - -)
+                    paragraph=$(echo $paragraph | sed 's/"/\\"/g')
+                    echo "$paragraph\n"
+                ;;
+                "I")
+                    read
+                    content=$(process_paragraph)
+                    content=$(echo $content | sed 's/"/\\"/g')
+                    images=$(images_to_data $content)
+                    echo "<div class=\\\"row\\\">\n"
+                    for img in ${images[@]}; do
+                        paragraph=$(echo $img | templatemake t no $IMG_TEMPLATE_PATH - -)
+                        paragraph=$(echo $paragraph | sed 's/"/\\"/g')
+                        echo "$paragraph\n"
+                    done
+                    echo "</div>\n"
+            esac
+        fi
+    done < $1
+}
+
+title=$(basename $1 .blog | sed 's/_/ /g')
+final_content=$(get_blog_post_content $1)
+final_data="{\"title\":\"$title\",\"content\":\"$final_content\"}"
+echo $final_data | templatemake t no $BLOGPOST_TEMPLATE_PATH - -
