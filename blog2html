@@ -72,6 +72,10 @@ function get_blog_post_content {
     done < $1
 }
 
+if [[ -z "$1" ]]; then
+    exit 1
+fi
+
 title=$(basename $1 .blog | sed 's/_/ /g')
 final_content=$(get_blog_post_content $1)
 final_data="{\"title\":\"$title\",\"content\":\"$final_content\"}"
